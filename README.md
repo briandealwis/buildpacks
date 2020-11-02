@@ -256,6 +256,9 @@ variables. These environment variables should be specified without a
   * `GO<key>`, see [documentation](https://golang.org/cmd/go/#hdr-Environment_variables).
       * **Example:** `GOFLAGS=-flag=value` passes `-flag=value` to `go` commands.
 * **Java**
+  * The Maven buildpack supports the [Polyglot extensions for Maven](https://github.com/takari/polyglot-maven#overview).
+    The Polyglot extensions are enabled by finding a `.mvn/extensions.xml`
+    in your application source directory.
   * `MAVEN_OPTS`, see [documentation](https://maven.apache.org/configure.html).
       * **Example:** `MAVEN_OPTS=-Xms256m -Xmx512m` passes these flags to the JVM running Maven.
       * **Example:** `MAVEN_OPTS=--add-opens java.base/java.lang=ALL-UNNAMED` to suppress "illegal reflective access" warnings from Maven.
