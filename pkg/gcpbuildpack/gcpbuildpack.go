@@ -244,23 +244,6 @@ func build(buildFn BuildFn) {
 	libcnb.Build(gcpb)
 }
 
-
-func writeStats(stats *stats) {
-	project, found := os.LookupEnv("GOOGLE_TRACE_PROJECT")
-	if !found || project == "" {
-		return
-	}
-	traceId, found := os.LookupEnv("GOOGLE_TRACE_ID")
-	if !found || traceId == "" {
-		return
-	}
-	traceDir, found := os.LookupEnv("GOOGLE_TRACE_DIR")
-	if !found || traceDir == "" {
-		return
-	}
-	writeTrace(traceDir, os.Args[0], project, traceId, stats.spans)
-}
-
 // Exit causes the buildpack to exit with the given exit code and message.
 func (ctx *Context) Exit(exitCode int, be *Error) {
 	ctx.exiter.Exit(exitCode, be)

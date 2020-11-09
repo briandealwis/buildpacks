@@ -20,23 +20,58 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 )
 
-func writeTrace(dir, description, projectId, traceId string, spans []*spanInfo) {
-	if len(spans) == 0 {
+func writeStats(stats *stats) {
+	project, found := os.LookupEnv("GOOGLE_TRACE_PROJECT")
+	if !found || project == "" {
 		return
 	}
+	traceDir, found := os.LookupEnv("GOOGLE_TRACE_DIR")
+	if !found || traceDir == "" {
+		return
+	}
+	// Maybe we should create a traceId if not found
+	traceId, parentId, found := parseTraceContext()
+	if !found {
+		return
+	}
+	writeTrace(traceDir, os.Args[0], project, traceId, parentId, stats.spans)
+}
 
+func parseTraceContext() (string, string, bool) {
+	// Support W3C-like convention of passing trace context
+	traceParent, found := os.LookupEnv("TRACEPARENT")
+	if found {
+		re := regexp.MustCompile(`00-([0-9a-fA-F]{32})-([0-9a-fA-F]{16})-0[01]`)
+		if elements := re.FindStringSubmatch(traceParent); elements != nil {
+			return elements[1], elements[2], true
+		}
+	}
+	return "", "", false
+}
+
+// writeTrace writes out the spans in a form suitable to be sent to Cloud Trace's batchWrite.
+func writeTrace(dir, description, projectId, traceId, rootSpanId string, spans []*spanInfo) {
 	// Cloud Trace expects the Span IDs to be 8 bytes (encoded as 16 hex digits).
 	// We hash our span description and use the fix 6 bytes, leaving space for 65536 spans.
 	spanIdPrefix := generateSpanPrefix(description)
 	parentSpanId := fmt.Sprintf("%x%04x", spanIdPrefix, 0)
 
 	parentSpan := spanInfo{name: description} // different from Cloud Trace span name
+	if len(spans) == 0 {
+		parentSpan.start = time.Now()
+		parentSpan.end = time.Now()
+	} else {
+		parentSpan.start = spans[0].start
+		parentSpan.end = spans[0].end
+	}
 
-	var s []interface{}
+	var s []interface{} // the Cloud Trace transformed spans to be marshalled
 
 	for i, span := range spans {
 		if parentSpan.start.After(span.start) {
@@ -52,14 +87,14 @@ func writeTrace(dir, description, projectId, traceId string, spans []*spanInfo) 
 
 	// Create parent span to contain the provided spans.
 	parentSpanName := fmt.Sprintf("projects/%s/traces/%s/spans/%s", projectId, traceId, parentSpanId)
-	s = append(s, marshalSpan(parentSpanName, parentSpanId, "", &parentSpan))
+	s = append(s, marshalSpan(parentSpanName, parentSpanId, rootSpanId, &parentSpan))
 
 	t := map[string]interface{}{"spans": s}
 	b, err := json.Marshal(t)
 	if err != nil {
 		return
 	}
-	file := fmt.Sprintf("%s/%s", dir, strings.ReplaceAll(description, string(os.PathSeparator), "_"))
+	file := filepath.Join(dir, strings.ReplaceAll(description, string(os.PathSeparator), "_"))
 	ioutil.WriteFile(file, b, 0644)
 }
 

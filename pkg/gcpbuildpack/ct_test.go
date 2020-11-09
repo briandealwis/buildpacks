@@ -25,6 +25,47 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
+func TestParseTraceContext(t *testing.T) {
+	tests := []struct {
+		name     string
+		value    string
+		found    bool
+		traceId  string
+		parentId string
+	}{
+		{name: "no sampling", value: "00-0af7651916cd43dd8448eb211c80319c-00f067aa0ba902b7-00", found: true, traceId: "0af7651916cd43dd8448eb211c80319c", parentId: "00f067aa0ba902b7"},
+		{name: "sampled flag", value: "00-0af7651916cd43dd8448eb211c80319c-00f067aa0ba902b7-01", found: true, traceId: "0af7651916cd43dd8448eb211c80319c", parentId: "00f067aa0ba902b7"},
+		{name: "unhandled version", value: "01-0af7651916cd43dd8448eb211c80319c-00f067aa0ba902b7-01", found: false},
+		{name: "invalid flags", value: "01-0af7651916cd43dd8448eb211c80319c-00f067aa0ba902b7-02", found: false},
+		{name: "invalid flags", value: "01-0af7651916cd43dd8448eb211c80319c-00f067aa0ba902b7-20", found: false},
+		{name: "trace id too small", value: "01-07651916cd43dd8448eb211c80319c-00f067aa0ba902b7-00", found: false},
+		{name: "trace id too big", value: "01-0ffad7651916cd43dd8448eb211c80319c-00f067aa0ba902b7-00", found: false},
+		{name: "parent id too small", value: "00-0af7651916cd43dd8448eb211c80319c-f067aa0ba902b7-01", found: false},
+		{name: "parent id too small", value: "00-0af7651916cd43dd8448eb211c80319c-0000f067aa0ba902b7-01", found: false},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			os.Setenv("TRACEPARENT", test.value)
+			traceId, parentId, found := parseTraceContext()
+			if test.found {
+				if !found {
+					t.Errorf("Unable to parse trace context")
+				}
+				if test.traceId != traceId {
+					t.Errorf("traceId not as expected\nwanted: %s\n  got: %s", test.traceId, traceId)
+				}
+				if test.parentId != parentId {
+					t.Errorf("parentId not as expected\nwanted: %s\n  got: %s", test.parentId, parentId)
+				}
+			} else {
+				if found {
+					t.Errorf("Shouldn't have been able to parse trace context")
+				}
+			}
+		})
+	}
+}
+
 func TestGenerateSpanPrefix(t *testing.T) {
 	prefix := generateSpanPrefix("this is a test")
 	if len(prefix) != 6 {
@@ -38,8 +79,8 @@ func TestGenerateSpanPrefix(t *testing.T) {
 }
 
 func TestMarshalSpan(t *testing.T) {
-	startTime := time.Date(2019, time.December, 25, 0, 0, 0, 0, time.UTC)
-	endTime := time.Date(2019, time.December, 25, 23, 59, 59, 0, time.UTC)
+	startTime := time.Date(2019, time.December, 25, 0, 0, 0, 200, time.UTC)
+	endTime := time.Date(2019, time.December, 25, 23, 59, 59, 100, time.UTC)
 	parentSpanId := "FEDCBA9876543210" // 8 bytes as 16 hex-coded digits
 	spanId := "0123456789ABCDEF"       // 8 bytes as 16 hex-coded digits
 	spanName := "projects/projectId/traces/traceId/spans/" + spanId
@@ -55,11 +96,11 @@ func TestMarshalSpan(t *testing.T) {
 			name: "short name and no parent",
 			span: spanInfo{name: "short", start: startTime, end: endTime},
 			expected: map[string]interface{}{
-				"name":                    spanName,
-				"spanId":                  spanId,
-				"displayName":             map[string]interface{}{"value": "short", "truncatedByteCount": 0},
-				"startTime":               "2019-12-25T00:00:00Z",
-				"endTime":                 "2019-12-25T23:59:59Z",
+				"name":        spanName,
+				"spanId":      spanId,
+				"displayName": map[string]interface{}{"value": "short", "truncatedByteCount": 0},
+				"startTime":   "2019-12-25T00:00:00.0000002Z",
+				"endTime":     "2019-12-25T23:59:59.0000001Z",
 			},
 		},
 		{
@@ -67,12 +108,12 @@ func TestMarshalSpan(t *testing.T) {
 			span:         spanInfo{name: "short", start: startTime, end: endTime},
 			parentSpanId: parentSpanId,
 			expected: map[string]interface{}{
-				"name":                    spanName,
-				"spanId":                  spanId,
-				"displayName":             map[string]interface{}{"value": "short", "truncatedByteCount": 0},
-				"startTime":               "2019-12-25T00:00:00Z",
-				"endTime":                 "2019-12-25T23:59:59Z",
-				"parentSpanId":            parentSpanId,
+				"name":         spanName,
+				"spanId":       spanId,
+				"displayName":  map[string]interface{}{"value": "short", "truncatedByteCount": 0},
+				"startTime":    "2019-12-25T00:00:00.0000002Z",
+				"endTime":      "2019-12-25T23:59:59.0000001Z",
+				"parentSpanId": parentSpanId,
 			},
 		},
 		{
@@ -80,12 +121,12 @@ func TestMarshalSpan(t *testing.T) {
 			span:         spanInfo{name: longDescription, start: startTime, end: endTime},
 			parentSpanId: parentSpanId,
 			expected: map[string]interface{}{
-				"name":                    spanName,
-				"spanId":                  spanId,
-				"displayName":             map[string]interface{}{"value": longDescription[0:128], "truncatedByteCount": len(longDescription) - 128},
-				"startTime":               "2019-12-25T00:00:00Z",
-				"endTime":                 "2019-12-25T23:59:59Z",
-				"parentSpanId":            parentSpanId,
+				"name":         spanName,
+				"spanId":       spanId,
+				"displayName":  map[string]interface{}{"value": longDescription[0:128], "truncatedByteCount": len(longDescription) - 128},
+				"startTime":    "2019-12-25T00:00:00.0000002Z",
+				"endTime":      "2019-12-25T23:59:59.0000001Z",
+				"parentSpanId": parentSpanId,
 			},
 		},
 	}
@@ -110,7 +151,7 @@ func TestWriteTrace(t *testing.T) {
 		{name: "span2", start: startTime, end: endTime},
 	}
 
-	writeTrace(tmpDir, "/cnb/buildpacks/foo/bin/detect", "projectId", "traceId", spans)
+	writeTrace(tmpDir, "/cnb/buildpacks/foo/bin/detect", "projectId", "traceId", "", spans)
 
 	file, err := os.Open(filepath.Join(tmpDir, "_cnb_buildpacks_foo_bin_detect"))
 	if err != nil {
@@ -122,8 +163,8 @@ func TestWriteTrace(t *testing.T) {
 	}
 	expected := `{"spans":[` +
 		`{"displayName":{"truncatedByteCount":0,"value":"span1"},"endTime":"2019-12-25T23:59:59Z","name":"projects/projectId/traces/traceId/spans/a776ff0aecd90001","parentSpanId":"a776ff0aecd90000","spanId":"a776ff0aecd90001","startTime":"2019-12-25T00:00:00Z"},` +
-		`{"displayName":{"truncatedByteCount":0,"value":"span2"},"endTime":"2019-12-25T23:59:59Z","name":"projects/projectId/traces/traceId/spans/a776ff0aecd90002","parentSpanId":"a776ff0aecd90000","spanId":"a776ff0aecd90002","startTime":"2019-12-25T00:00:00Z"},`+
-		`{"displayName":{"truncatedByteCount":0,"value":"/cnb/buildpacks/foo/bin/detect"},"endTime":"2019-12-25T23:59:59Z","name":"projects/projectId/traces/traceId/spans/a776ff0aecd90000","spanId":"a776ff0aecd90000","startTime":"0001-01-01T00:00:00Z"}]}`
+		`{"displayName":{"truncatedByteCount":0,"value":"span2"},"endTime":"2019-12-25T23:59:59Z","name":"projects/projectId/traces/traceId/spans/a776ff0aecd90002","parentSpanId":"a776ff0aecd90000","spanId":"a776ff0aecd90002","startTime":"2019-12-25T00:00:00Z"},` +
+		`{"displayName":{"truncatedByteCount":0,"value":"/cnb/buildpacks/foo/bin/detect"},"endTime":"2019-12-25T23:59:59Z","name":"projects/projectId/traces/traceId/spans/a776ff0aecd90000","spanId":"a776ff0aecd90000","startTime":"2019-12-25T00:00:00Z"}]}`
 	if diff := cmp.Diff(expected, string(content)); diff != "" {
 		t.Errorf("writeTrace() mismatch (-want +got):\n%s", diff)
 	}
