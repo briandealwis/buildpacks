@@ -198,6 +198,7 @@ func (gcpd gcpdetector) Detect(ldctx libcnb.DetectContext) (libcnb.DetectResult,
 	ctx.detectResult.Pass = true
 
 	status = StatusOk
+	writeStats(&ctx.stats)
 	return ctx.detectResult, nil
 }
 
@@ -223,6 +224,7 @@ func (gcpb gcpbuilder) Build(lbctx libcnb.BuildContext) (libcnb.BuildResult, err
 
 	if err := gcpb.buildFn(ctx); err != nil {
 		msg := fmt.Sprintf("Failed to run /bin/build: %v", err)
+		// FIXME: writeStats() with status
 		var be *Error
 		if errors.As(err, &be) {
 			status = be.Status
@@ -233,12 +235,30 @@ func (gcpb gcpbuilder) Build(lbctx libcnb.BuildContext) (libcnb.BuildResult, err
 
 	status = StatusOk
 	ctx.saveSuccessOutput(time.Since(start))
+	writeStats(&ctx.stats)
 	return ctx.buildResult, nil
 }
 
 func build(buildFn BuildFn) {
 	gcpb := gcpbuilder{buildFn: buildFn}
 	libcnb.Build(gcpb)
+}
+
+
+func writeStats(stats *stats) {
+	project, found := os.LookupEnv("GOOGLE_TRACE_PROJECT")
+	if !found || project == "" {
+		return
+	}
+	traceId, found := os.LookupEnv("GOOGLE_TRACE_ID")
+	if !found || traceId == "" {
+		return
+	}
+	traceDir, found := os.LookupEnv("GOOGLE_TRACE_DIR")
+	if !found || traceDir == "" {
+		return
+	}
+	writeTrace(traceDir, os.Args[0], project, traceId, stats.spans)
 }
 
 // Exit causes the buildpack to exit with the given exit code and message.

@@ -33,6 +33,10 @@ LICENSES="$2"
 
 TAG="v1"
 
+# Disable BuildKit as it doesn't like our dockerfile names.
+# See https://github.com/docker/buildx/issues/406
+export DOCKER_BUILDKIT=0
+
 # Extract licenses.tar because it is symlinked, which Docker does not support.
 readonly TEMP="$(mktemp -d)"
 trap "rm -rf $TEMP" EXIT
