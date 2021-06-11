@@ -127,7 +127,7 @@ func TestEntrypoint(t *testing.T) {
 
 			if gotErr != nil {
 				if gotErr != nil != tc.wantErr {
-					t.Errorf("Entrypoint() got err %b, want err %b", gotErr != nil, tc.wantErr)
+					t.Errorf("Entrypoint() got err %v, want err %v", gotErr != nil, tc.wantErr)
 				}
 				return
 			}

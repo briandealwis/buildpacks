@@ -134,9 +134,9 @@ func TestJSONVersionParse(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			if v, err := parseVersionJSON(tc.json); err != nil {
-				t.Fatalf("parseVersionJSON() failed: %v", tc.name, err)
+				t.Fatalf("parseVersionJSON() failed: %v", err)
 			} else if v != tc.want {
-				t.Errorf("parseVersionJSON() = %q, want %q", tc.name, v, tc.want)
+				t.Errorf("parseVersionJSON() = %q, want %q", v, tc.want)
 			}
 		})
 	}
