@@ -62,7 +62,7 @@ func TestContainsFF(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			got := containsFF(tc.str)
 			if got != tc.want {
-				t.Errorf("containsFF() got %q, want %q", got, tc.want)
+				t.Errorf("containsFF() got %v, want %v", got, tc.want)
 			}
 		})
 	}
