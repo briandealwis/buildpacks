@@ -229,12 +229,6 @@ func isInvokerJar(ctx *gcp.Context, jar string) bool {
 func installFramework(ctx *gcp.Context, layer *libcnb.Layer, version string) error {
 	url := fmt.Sprintf(functionsFrameworkURLTemplate, version)
 	ffName := filepath.Join(layer.Path, "functions-framework.jar")
-	result, err := ctx.ExecWithErr([]string{"curl", "--silent", "--fail", "--show-error", "--output", ffName, url})
-	// We use ExecWithErr rather than plain Exec because if it fails we want to exit with an error message better
-	// than "Failure: curl: (22) The requested URL returned error: 404".
-	// TODO(b/155874677): use plain Exec once it gives sufficient error messages.
-	if err != nil {
-		return gcp.InternalErrorf("fetching functions framework jar: %v\n%s", err, result.Stderr)
-	}
+	ctx.Download("functions framework jar", url, ffName)
 	return nil
 }

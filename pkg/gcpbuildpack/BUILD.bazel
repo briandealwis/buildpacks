@@ -9,6 +9,7 @@ go_library(
     srcs = [
         "builderoutput.go",
         "detect.go",
+        "download.go",
         "env.go",
         "exec.go",
         "exit.go",
@@ -33,6 +34,7 @@ go_test(
     srcs = [
         "builderoutput_test.go",
         "detect_test.go",
+        "download_test.go",
         "exec_test.go",
         "gcpbuildpack_test.go",
         "span_test.go",

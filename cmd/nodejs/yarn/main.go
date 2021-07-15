@@ -21,11 +21,12 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/buildpacks/libcnb"
+
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
-	"github.com/buildpacks/libcnb"
 )
 
 const (
@@ -132,8 +133,7 @@ func installYarn(ctx *gcp.Context) error {
 		// Download and install yarn in layer.
 		ctx.Logf("Installing Yarn v%s", yarnVersion)
 		archiveURL := fmt.Sprintf(yarnURL, yarnVersion)
-		command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xz --directory %s --strip-components=1", archiveURL, yrl.Path)
-		ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution)
+		ctx.DownloadAndExtract("yarn", archiveURL, yrl.Path, gcp.StripComponents(1))
 	}
 
 	// Store layer flags and metadata.

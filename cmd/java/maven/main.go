@@ -157,8 +157,7 @@ func installMaven(ctx *gcp.Context) (string, error) {
 	if code := ctx.HTTPStatus(archiveURL); code != http.StatusOK {
 		return "", gcp.UserErrorf("Maven version %s does not exist at %s (status %d).", mavenVersion, archiveURL, code)
 	}
-	command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xz --directory %s --strip-components=1", archiveURL, mvnl.Path)
-	ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution)
+	ctx.DownloadAndExtract("maven", archiveURL, mvnl.Path, gcp.StripComponents(1))
 
 	ctx.SetMetadata(mvnl, versionKey, mavenVersion)
 	return filepath.Join(mvnl.Path, "bin", "mvn"), nil

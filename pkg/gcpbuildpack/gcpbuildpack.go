@@ -178,6 +178,36 @@ func (ctx *Context) Processes() []libcnb.Process {
 	return ctx.buildResult.Processes
 }
 
+// ShouldCache returns if `GOOGLE_CACHE` is set and points to a valid
+// location.  It returns the cache location and a boolean indicating
+// validity.
+func (ctx *Context) ShouldCache() (string, bool) {
+	val, found := os.LookupEnv(env.CacheLocation)
+	if !found || val == "" {
+		return "", false
+	}
+	// Reject filenames that require shell-quoting
+	if strings.IndexAny(val, `\'" $(){}[]`) >= 0 {
+		ctx.Warnf("Caching disabled: %q location %q: unsafe filename requires shell quoting", env.CacheLocation, val)
+	}
+	if fi, err := os.Stat(val); err != nil {
+		ctx.Warnf("Caching disabled: cannot access %q location %q: %v", env.CacheLocation, val, err)
+		return "", false
+	} else if !fi.IsDir() {
+		ctx.Warnf("Caching disabled: %q location %q is not a directory", env.CacheLocation, val)
+		return "", false
+	}
+
+	// verify cache location is writable
+	f, err := os.CreateTemp(val, "bp*")
+	if err != nil {
+		ctx.Warnf("Caching disabled: %q location %q is not writable: %v", env.CacheLocation, val, err)
+		return "", false
+	}
+	os.Remove(f.Name())
+	return val, true
+}
+
 // Main is the main entrypoint to a buildpack's detect and build functions.
 func Main(d DetectFn, b BuildFn) {
 	switch filepath.Base(os.Args[0]) {

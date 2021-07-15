@@ -110,6 +110,11 @@ const (
 	// label on the final container of "abc=Some-Value". The label key itself is
 	// lowercased, underscores changed to dashes, and is prefixed with "google.".
 	LabelPrefix = "GOOGLE_LABEL_"
+
+	// CacheLocation is an env var pointing to a directory. When set, downloads should
+	// that are suitable for sharing across builds should be placed here rather than in
+	// caching layers.
+	CacheLocation = "GOOGLE_CACHE"
 )
 
 // IsDebugMode returns true if the buildpack debug mode is enabled.

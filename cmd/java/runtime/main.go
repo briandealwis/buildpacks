@@ -23,10 +23,11 @@ import (
 	"os"
 	"strings"
 
+	"github.com/buildpacks/libcnb"
+
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
-	"github.com/buildpacks/libcnb"
 )
 
 const (
@@ -87,7 +88,7 @@ func buildFn(ctx *gcp.Context) error {
 		return fmt.Errorf("parsing JSON returned by %s: %w", releaseURL, err)
 	}
 
-	version, archiveURL, err := extractRelease(release)
+	version, bp, err := extractRelease(release)
 	if err != nil {
 		return fmt.Errorf("extracting release returned by %s: %w", releaseURL, err)
 	}
@@ -112,15 +113,17 @@ func buildFn(ctx *gcp.Context) error {
 	// Download and install Java in layer.
 	ctx.Logf("Installing Java v%s", version)
 
-	command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xz --directory %s --strip-components=1", archiveURL, l.Path)
-	ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution)
+	ctx.DownloadAndExtract("JDK", bp.Link, l.Path, gcp.StripComponents(1))
 
 	ctx.SetMetadata(l, versionKey, version)
 	return nil
 }
 
 type binaryPkg struct {
-	Link string `json:"link"`
+	Checksum string `json:"checksum"`
+	Link     string `json:"link"`
+	Name     string `json:"name"`
+	Size     int    `json:"size"`
 }
 
 type binary struct {
@@ -152,16 +155,16 @@ func parseVersionJSON(jsonStr string) (javaRelease, error) {
 }
 
 // extractRelease returns the version name and archiveURL from a javaRelease.
-func extractRelease(release javaRelease) (string, string, error) {
+func extractRelease(release javaRelease) (string, binaryPkg, error) {
 	if len(release.Binaries) == 0 {
-		return "", "", fmt.Errorf("no binaries in given release %s", release.VersionData.Semver)
+		return "", binaryPkg{}, fmt.Errorf("no binaries in given release %s", release.VersionData.Semver)
 	}
 
 	for _, binary := range release.Binaries {
 		if binary.ImageType == "jdk" && binary.OS == "linux" && binary.Architecture == "x64" {
-			return release.VersionData.Semver, binary.BinaryPkg.Link, nil
+			return release.VersionData.Semver, binary.BinaryPkg, nil
 		}
 	}
 
-	return "", "", fmt.Errorf("jdk/linux/x64 binary not found in release %s", release.VersionData.Semver)
+	return "", binaryPkg{}, fmt.Errorf("jdk/linux/x64 binary not found in release %s", release.VersionData.Semver)
 }

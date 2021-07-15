@@ -129,20 +129,8 @@ func installGradle(ctx *gcp.Context) (string, error) {
 		return "", fmt.Errorf("Gradle version %s does not exist at %s (status %d)", gradleVersion, downloadURL, code)
 	}
 
-	tmpDir := "/tmp"
-	gradleZip := filepath.Join(tmpDir, "gradle.zip")
-	defer ctx.RemoveAll(gradleZip)
-
-	curl := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s --output %s", downloadURL, gradleZip)
-	ctx.Exec([]string{"bash", "-c", curl}, gcp.WithUserAttribution)
-
-	unzip := fmt.Sprintf("unzip -q %s -d %s", gradleZip, tmpDir)
-	ctx.Exec([]string{"bash", "-c", unzip}, gcp.WithUserAttribution)
-
-	gradleExtracted := filepath.Join(tmpDir, fmt.Sprintf("gradle-%s", gradleVersion))
-	defer ctx.RemoveAll(gradleExtracted)
-	install := fmt.Sprintf("mv %s/* %s", gradleExtracted, gradlel.Path)
-	ctx.Exec([]string{"bash", "-c", install}, gcp.WithUserTimingAttribution)
+	// gradle zip has leading path of `gradle-<version>`
+	ctx.DownloadAndExtract("gradle", downloadURL, gradlel.Path, gcp.StripComponents(1))
 
 	ctx.SetMetadata(gradlel, versionKey, gradleVersion)
 	return filepath.Join(gradlel.Path, "bin", "gradle"), nil

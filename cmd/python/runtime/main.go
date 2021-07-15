@@ -23,10 +23,11 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/buildpacks/libcnb"
+
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
-	"github.com/buildpacks/libcnb"
 )
 
 const (
@@ -83,8 +84,7 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	ctx.Logf("Installing Python v%s", version)
-	command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xz --directory %s", archiveURL, l.Path)
-	ctx.Exec([]string{"bash", "-c", command})
+	ctx.DownloadAndExtract("python", archiveURL, l.Path)
 
 	ctx.Logf("Upgrading pip to the latest version and installing build tools")
 	path := filepath.Join(l.Path, "bin/python3")

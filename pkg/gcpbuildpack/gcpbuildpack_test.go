@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -513,4 +514,50 @@ func TestHasAtLeastOne(t *testing.T) {
 
 func proc(command, commandType string) libcnb.Process {
 	return libcnb.Process{Command: command, Type: commandType, Default: true, Direct: true}
+}
+
+func TestShouldCache(t *testing.T) {
+	oldValue, wasSet := os.LookupEnv(env.CacheLocation)
+	defer func() {
+		if wasSet {
+			os.Setenv(env.CacheLocation, oldValue)
+		} else {
+			os.Unsetenv(env.CacheLocation)
+		}
+	}()
+
+	dir := t.TempDir()
+	file := filepath.Join(dir, "file")
+	ioutil.WriteFile(file, nil, 0555)
+
+	unwritable := t.TempDir()
+	if err := os.Chmod(unwritable, 0555); err != nil {
+		t.Fatal("unable to make directory unwritable", err)
+	}
+
+	tests := []struct {
+		description string
+		path        string
+		shouldCache bool
+		location    string
+	}{
+		{"a writable directory", dir, true, dir},
+		{"empty location", "", false, ""},
+		{"a file", file, false, ""},
+		{"non-existant-location", path.Join("non", "existant", "file"), false, ""},
+		{"unwritable directory", unwritable, false, ""},
+	}
+	for _, test := range tests {
+		t.Run(test.description, func(t *testing.T) {
+			ctx := NewContext()
+
+			os.Setenv(env.CacheLocation, test.path)
+			location, shouldCache := ctx.ShouldCache()
+			if test.shouldCache != shouldCache {
+				t.Errorf("shouldCache: got=%v want=%v", shouldCache, test.shouldCache)
+			} else if location != test.location {
+				t.Errorf("location: got=%v want=%v", location, test.location)
+			}
+		})
+	}
 }

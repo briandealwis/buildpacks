@@ -23,11 +23,12 @@ import (
 	"os"
 	"strings"
 
+	"github.com/buildpacks/libcnb"
+
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/golang"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
-	"github.com/buildpacks/libcnb"
 )
 
 const (
@@ -75,8 +76,7 @@ func buildFn(ctx *gcp.Context) error {
 
 		// Download and install Go in layer.
 		ctx.Logf("Installing Go v%s", version)
-		command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xz --directory %s --strip-components=1", archiveURL, grl.Path)
-		ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution)
+		ctx.DownloadAndExtract("go toolchain", archiveURL, grl.Path, gcp.StripComponents(1))
 		ctx.SetMetadata(grl, versionKey, version)
 	}
 

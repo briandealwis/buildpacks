@@ -21,11 +21,12 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/buildpacks/libcnb"
+
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
-	"github.com/buildpacks/libcnb"
 )
 
 const (
@@ -86,8 +87,7 @@ func buildFn(ctx *gcp.Context) error {
 
 	// Download and install Node.js in layer.
 	ctx.Logf("Installing Node.js v%s", version)
-	command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xJ --directory %s --strip-components=1", archiveURL, nrl.Path)
-	ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution)
+	ctx.DownloadAndExtract("node.js", archiveURL, nrl.Path, gcp.StripComponents(1))
 
 	ctx.SetMetadata(nrl, versionKey, version)
 	return nil

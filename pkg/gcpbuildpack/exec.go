@@ -38,9 +38,10 @@ type ExecResult struct {
 }
 
 type execParams struct {
-	cmd []string
-	dir string
-	env []string
+	cmd         []string
+	dir         string
+	env         []string
+	errHandlers []func(*Error)
 
 	userFailure     bool
 	userTiming      bool
@@ -105,6 +106,13 @@ var WithStdoutTail = WithMessageProducer(KeepStdoutTail)
 // WithStdoutHead keeps the head of stdout for the error message.
 var WithStdoutHead = WithMessageProducer(KeepStdoutHead)
 
+// OnError calls the provided function if an error occurs.
+func OnError(f func(*Error)) ExecOption {
+	return func(o *execParams) {
+		o.errHandlers = append(o.errHandlers, f)
+	}
+}
+
 // Exec runs the given command under the default configuration, handling error if present.
 func (ctx *Context) Exec(cmd []string, opts ...ExecOption) *ExecResult {
 	result, err := ctx.ExecWithErr(cmd, opts...)
@@ -151,6 +159,9 @@ func (ctx *Context) ExecWithErr(cmd []string, opts ...ExecOption) (*ExecResult, 
 		}
 	}
 	be.ID = generateErrorID(params.cmd...)
+	for _, f := range params.errHandlers {
+		f(be)
+	}
 	return result, be
 }
 

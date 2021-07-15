@@ -195,8 +195,7 @@ func installVcpkg(ctx *gcp.Context) (string, error) {
 	}
 	ctx.CacheMiss(vcpkgLayerName)
 	ctx.Logf("Installing vcpkg %s", vcpkgVersion)
-	command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xz --directory %s --strip-components=1", vcpkgURL, vcpkg.Path)
-	ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution)
+	ctx.DownloadAndExtract("vcpkg", vcpkgURL, vcpkg.Path, gcp.StripComponents(1))
 
 	ctx.Exec([]string{filepath.Join(vcpkg.Path, "bootstrap-vcpkg.sh")})
 	ctx.Exec([]string{"cp", filepath.Join(ctx.BuildpackRoot(), "converter", "x64-linux-nodebug.cmake"), customTripletPath})

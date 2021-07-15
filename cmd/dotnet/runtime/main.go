@@ -25,11 +25,12 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/buildpacks/libcnb"
+
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/dotnet"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
-	"github.com/buildpacks/libcnb"
 )
 
 const (
@@ -107,8 +108,7 @@ func buildFn(ctx *gcp.Context) error {
 	// With --keep-directory-symlink, the SDK will be unpacked into /runtime/sdk,
 	// which is symlinked to the SDK layer. This is needed because the dotnet CLI
 	// needs an sdk directory in the same directory as the dotnet executable.
-	command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xz --directory %s --keep-directory-symlink --strip-components=1", archiveURL, rtl.Path)
-	ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution)
+	ctx.DownloadAndExtract("dotnet sdk", archiveURL, rtl.Path, gcp.KeepDirectorySymlink(), gcp.StripComponents(1))
 
 	// Keep the SDK layer for launch in devmode because we use `dotnet watch`.
 	ctx.SetMetadata(sdkl, versionKey, version)

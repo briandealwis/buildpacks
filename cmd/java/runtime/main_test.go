@@ -279,15 +279,15 @@ func TestExtractRelease(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			gotVersion, gotBinaryLink, err := extractRelease(tc.javaRelease)
+			gotVersion, bp, err := extractRelease(tc.javaRelease)
 			if err != nil {
 				t.Fatalf("extractRelease() returned error: %v", err)
 			}
 			if gotVersion != tc.wantVersion {
 				t.Errorf("release version from extractRelease()=%s, want=%s", gotVersion, tc.wantVersion)
 			}
-			if gotBinaryLink != tc.wantBinaryLink {
-				t.Errorf("binaries from extractRelease()=%v, want=%v", gotBinaryLink, tc.wantBinaryLink)
+			if bp.Link != tc.wantBinaryLink {
+				t.Errorf("binaries from extractRelease()=%v, want=%v", bp.Link, tc.wantBinaryLink)
 			}
 		})
 	}

@@ -585,6 +585,14 @@ func TestExecWithErr(t *testing.T) {
 			wantErrMessage: "foo...",
 			wantResult:     &ExecResult{ExitCode: 99, Stderr: "foo------", Combined: "foo------"},
 		},
+		{
+			name:           "OnError",
+			cmd:            []string{"bash", "-c", "echo foo------ >&2; exit 99"},
+			opts:           []ExecOption{WithStderrHead, OnError(func(e *Error) { e.Message = strings.ToUpper(e.Message) })},
+			wantErr:        true,
+			wantErrMessage: "FOO...",
+			wantResult:     &ExecResult{ExitCode: 99, Stderr: "foo------", Combined: "foo------"},
+		},
 	}
 
 	for _, tc := range testCases {
